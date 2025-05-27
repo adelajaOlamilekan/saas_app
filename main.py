@@ -6,7 +6,7 @@ from exceptions.exceptions import (
   ResourceExistsError
 )
 import routers
-import routers.item
+import routers.security
 import routers.user
 from contextlib import asynccontextmanager
 
@@ -24,7 +24,7 @@ app = FastAPI(
 )
 
 app.include_router(routers.user.router)
-# app.include_router(routers.item.router)
+app.include_router(routers.security.router)
 
 @app.get("/")
 def home(db:Session = Depends(get_db)):

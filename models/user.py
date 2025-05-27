@@ -5,7 +5,9 @@ from sqlalchemy import (
   String,
   DateTime,
   func,
+  Enum
 )
+from utils.user_types import Role
 
 class User(Base):
   __tablename__="users"
@@ -13,6 +15,7 @@ class User(Base):
   username = Column(String)
   email = Column(String, unique=True)
   hashed_password = Column(String)
+  role = Column(Enum(Role), default=Role.basic)
   created_at = Column(DateTime(timezone=True), default=func.now())
   updated_at = Column(DateTime(timezone=True), default=func.now(), onupdate=func.now())
 
