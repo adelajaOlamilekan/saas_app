@@ -10,10 +10,13 @@ from utils.security import(
   get_premium_user,
   oauth2_scheme,
   get_current_user,
+  resolve_github_token
 
 )
 from models.user import User
 from schema.user import UserResponse
+from config.settings import settings
+import httpx
 
 router = APIRouter()
 
@@ -74,3 +77,42 @@ def welcome_all_user(user: User = Depends(get_current_user)):
       status_code=status.HTTP_401_UNAUTHORIZED,
       detail="User not authorized"
     )
+
+@router.get("/auth/url")
+def github_login():
+  return {
+    "auth_url": settings.GITHUB_AUTHORIZATION_URL +
+    f"?client_id={settings.GITHUB_CLIENT_ID}"
+  }
+
+@router.get("/github/auth/token", response_model=Token)
+async def github_callback_code(code:str):
+  token_response = httpx.post(
+    settings.GITHUB_ACCESS_TOKEN_URL,
+    data={
+      "client_id": settings.GITHUB_CLIENT_ID,
+      "client_secret": settings.GITHUB_CLIENT_SECRET,
+      "code": code,
+      "redirect_url":settings.GITHUB_REDIRECT_URL
+    },
+    headers={"Accept": "application/json"}
+  ).json()
+
+  access_token = token_response.get("access_token")
+  if not access_token:
+    raise HTTPException(
+      status_code=status.HTTP_401_UNAUTHORIZED,
+      detail="User not registered"
+    )
+  
+  token_type = token_response.get("token_type", "bearer")
+  return {
+    "access_token": access_token,
+    "token_type": token_type
+  }
+
+@router.get("/home")
+def homepage(user: UserResponse=Depends(resolve_github_token)):
+  return {
+    "message": f"logged in {user.username}"
+  }

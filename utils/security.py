@@ -16,7 +16,7 @@ from jose import (
   JWTError
 )
 import datetime
-from fastapi import Depends
+from fastapi import Depends, HTTPException, status
 from utils.user_types import Role
 from schema.user import (
   UserResponse
@@ -95,17 +95,30 @@ def get_premium_user(user: User = Depends(get_current_user)):
   else:
     return None
 
-# def resolve_github_token(
-#     access_token: str= Depends(OAuth2),
-#     db: Session = Depends(get_db)
-# )-> User:
-#   user_response = httpx.get("https://api/github.com/user",
-#                             headers={"Authorization": access_token}).json()
+def resolve_github_token(
+    access_token: str= Depends(OAuth2()),
+    db: Session = Depends(get_db)
+)-> User:
+  try:
+
+    user_response = httpx.get(settings.GITHUB_USER_API,
+                              headers={"Authorization": access_token}).json()
+  except httpx.ConnectError:
+    return HTTPException(
+      status_code=status.HTTP_400_BAD_REQUEST,
+      detail="invalid URL"
+    )
+
+  print(user_response)
+  username = user_response.get("login", " ")
+  user = get_user_by(User.username, db, username)
+  if not user:
+    email = user_response.get("email", " ")
+    user  = get_user_by(User.email, db, email)
   
-#   username = user_response.get("login", " ")
-#   user = get_user_by(User.username, db, username)
-#   if not user:
-#     email = user_response.get("email", " ")
-#     user  = get_user_by(User.email, db, email)
-  
-#   if not 
+  if not user:
+    raise HTTPException(
+      status_code=status.HTTP_403_FORBIDDEN,
+      detail="Token not valid"
+    )
+  return user
